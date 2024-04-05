@@ -107,8 +107,8 @@ def expmap(v):
   t = np.dot(V, u)
   T = np.eye(3)
   T[:2, :2] = R
-  T[0, 2] = u[0]
-  T[1, 2] = u[1]
+  T[0, 2] = t[0]
+  T[1, 2] = t[1]
   return T
 
 def plot_points(points1, points2, title, block):
