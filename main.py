@@ -23,6 +23,7 @@
 # SOFTWARE.
 
 import sys
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import KDTree
@@ -142,12 +143,14 @@ def icp_scan_matching(trans_mat, source_points, target_points):
   max_dist = 3.0
   epsilon = 1e-4
   kdtree = KDTree(target_points)
+  fp = open('icp_log.txt', 'w')
 
   for iter_num in range(max_iter_num):
     H = np.zeros((3, 3))
     b = np.zeros(3)
     R = trans_mat[:2, :2]
     corresponding_points_num = 0
+    error_sum = 0.0
 
     for i in range(0, len(source_points), scan_step):
       point = np.array([source_points[i][0], source_points[i][1], 1.0])
@@ -159,6 +162,7 @@ def icp_scan_matching(trans_mat, source_points, target_points):
 
       target = target_points[idx]
       error = np.array([target[0] - query[0], target[1] - query[1], 0.0])
+      error_sum += math.sqrt(np.dot(error, error))
       v = np.dot(R, skewd(source_points[i]))
       J = np.zeros((3, 3))
       J[0:2, 0:2] = -R
@@ -168,8 +172,10 @@ def icp_scan_matching(trans_mat, source_points, target_points):
       b += np.dot(J.T, error)
       corresponding_points_num += 1
 
+    error_ave = error_sum / float(corresponding_points_num)
     delta = np.linalg.solve(H, -b)
     update = np.dot(delta, delta)
+    fp.write(str(iter_num) + ' ' + str(error_ave) + ' ' + str(update) + '\n')
     trans_mat = np.dot(trans_mat, expmap(delta))
     title = 'ICP scan matching (' + str(iter_num + 1) + " iteratioin)"
     plot_points(transform_points(trans_mat, source_points), target_points, title, False)
@@ -179,6 +185,7 @@ def icp_scan_matching(trans_mat, source_points, target_points):
       plot_points(transform_points(trans_mat, source_points), target_points, title, True)
       break
 
+  fp.close()
   return trans_mat
 
 def ndt_scan_matching(trans_mat, source_points, target_points, target_covs):
@@ -187,12 +194,14 @@ def ndt_scan_matching(trans_mat, source_points, target_points, target_covs):
   max_dist = 3.0
   epsilon = 1e-4
   kdtree = KDTree(target_points)
+  fp = open('ndt_log.txt', 'w')
 
   for iter_num in range(max_iter_num):
     H = np.zeros((3, 3))
     b = np.zeros(3)
     R = trans_mat[:2, :2]
     corresponding_points_num = 0
+    error_sum = 0.0
 
     for i in range(0, len(source_points), scan_step):
       point = np.array([source_points[i][0], source_points[i][1], 1.0])
@@ -207,6 +216,7 @@ def ndt_scan_matching(trans_mat, source_points, target_points, target_covs):
       C[0:2, 0:2] = target_covs[idx]
       IM = np.linalg.inv(C)
       error = np.array([target[0] - query[0], target[1] - query[1], 0.0])
+      error_sum += math.sqrt(np.dot(error, error))
       v = np.dot(R, skewd(source_points[i]))
       J = np.zeros((3, 3))
       J[0:2, 0:2] = -R
@@ -216,9 +226,11 @@ def ndt_scan_matching(trans_mat, source_points, target_points, target_covs):
       b += np.dot(J.T, np.dot(IM, error))
       corresponding_points_num += 1
 
+    error_ave = error_sum / float(corresponding_points_num)
     delta = np.linalg.solve(H, -b)
     update = np.dot(delta, delta)
     trans_mat = np.dot(trans_mat, expmap(delta))
+    fp.write(str(iter_num) + ' ' + str(error_ave) + ' ' + str(update) + '\n')
     title = 'NDT scan matching (' + str(iter_num + 1) + " iteratioin)"
     plot_points(transform_points(trans_mat, source_points), target_points, title, False)
     print(iter_num, update)
@@ -227,6 +239,7 @@ def ndt_scan_matching(trans_mat, source_points, target_points, target_covs):
       plot_points(transform_points(trans_mat, source_points), target_points, title, True)
       break
 
+  fp.close()
   return trans_mat
 
 
@@ -248,6 +261,8 @@ trans_mat2 = make_transformation_matrix(1.0, 0.0, 0.5)
 
 transformed_points1 = transform_points(trans_mat1, scan_points1)
 transformed_points2 = transform_points(trans_mat2, scan_points2)
+
+# plot_points(transformed_points1, transformed_points2, '', True)
 
 if use_icp == True:
   print("Start ICP scan matchig")
